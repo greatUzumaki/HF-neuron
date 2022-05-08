@@ -7,15 +7,16 @@
   </head>
   <body>
     <div>
-      <label for="userCanvas">Входной сигнал</label>
+      <label for="userCanvas">Исходная картинка</label>
       <canvas id="userCanvas" width="450" height="450"> </canvas>
-      <label for="netCanvas">Восстановленный сигнал</label>
+      <label for="netCanvas">Восстановленная картинка</label>
       <canvas id="netCanvas" width="450" height="450"> </canvas>
     </div>
     <div>
       <button id="resetButton">Очистить</button>
       <button id="memoryButton">Запомнить</button>
       <button id="recognizeButton">Распознать</button>
+      <button id="retrainButton">Разобучить</button>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="./script.js"></script>

@@ -4,7 +4,11 @@ let inputVector = gridSize * gridSize;
 let isDrawing = false;
 const weights = [];
 let userImageState = [];
-for (let i = 0; i < inputVector; i += 1) {
+let all_Images = [];
+let result = [];
+const E = 0.08; // Коэф для переобучения;
+
+for (let i = 0; i < inputVector; i++) {
   weights[i] = new Array(inputVector).fill(0);
   userImageState[i] = -1;
 }
@@ -25,13 +29,14 @@ const getNewSquareCoords = (canvas, clientX, clientY, size) => {
   return { x, y };
 };
 
+// Сетка
 const drawGrid = (ctx) => {
   ctx.beginPath();
   ctx.fillStyle = 'white';
   ctx.lineWidth = 2;
   ctx.strokeStyle = 'black';
-  for (let row = 0; row < gridSize; row += 1) {
-    for (let column = 0; column < gridSize; column += 1) {
+  for (let row = 0; row < gridSize; row++) {
+    for (let column = 0; column < gridSize; column++) {
       const x = column * squareSize;
       const y = row * squareSize;
       ctx.rect(x, y, squareSize, squareSize);
@@ -42,21 +47,42 @@ const drawGrid = (ctx) => {
   ctx.closePath();
 };
 
+// Рисуем образ сети
 const drawImageFromArray = (data, ctx) => {
   const twoDimData = [];
   while (data.length) twoDimData.push(data.splice(0, gridSize));
 
   drawGrid(ctx);
-  for (let i = 0; i < gridSize; i += 1) {
-    for (let j = 0; j < gridSize; j += 1) {
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
       if (twoDimData[i][j] === 1) {
         ctx.fillStyle = 'black';
         ctx.fillRect(j * squareSize, i * squareSize, squareSize, squareSize);
       }
     }
   }
+
+  let all_errors = [];
+  let flatRecog = twoDimData.flat();
+  for (let index = 0; index < all_Images.length; index++) {
+    let currImage = all_Images[index];
+    console.log(currImage);
+    let error = 0;
+    for (let i = 0; i < flatRecog.length; i++) {
+      if (flatRecog[i] !== currImage[i]) error++;
+    }
+    error = error / flatRecog.length;
+    all_errors.push(error);
+  }
+
+  let error_index = all_errors.indexOf(Math.min(...all_errors));
+  console.log(
+    `На ${(1 - all_errors[error_index]) * 100}% это образ ${error_index + 1}`
+  );
+  console.log(all_errors);
 };
 
+// Ивенты мыши
 const handleMouseDown = (e) => {
   userContext.fillStyle = 'black';
   userContext.fillRect(
@@ -101,12 +127,14 @@ const stopDrawing = () => {
   isDrawing = false;
 };
 
+// Сброс картинки
 const clearCurrentImage = () => {
   drawGrid(userContext);
   drawGrid(netContext);
   userImageState = new Array(gridSize * gridSize).fill(-1);
 };
 
+// Запомнить образ
 const memorizeImage = () => {
   for (let i = 0; i < inputVector; i += 1) {
     for (let j = 0; j < inputVector; j += 1) {
@@ -116,41 +144,50 @@ const memorizeImage = () => {
       }
     }
   }
-  console.log(userImageState);
+
+  all_Images.push(userImageState);
 };
 
-const recognizeSignal = () => {
-  let oldImage = [...userImageState];
+// Переобучить
+const reTrain = () => {
+  console.log(result);
+  for (let i = 0; i < inputVector; i += 1) {
+    for (let j = 0; j < inputVector; j += 1) {
+      if (i === j) weights[i][j] = 0;
+      else {
+        weights[i][j] -= E * (result[i] * result[j]);
+      }
+    }
+  }
+};
+
+// Распознать
+const recognizeImage = () => {
   let prevNetState;
   const currNetState = [...userImageState];
   let counter = 0;
   do {
     counter += 1;
     prevNetState = [...currNetState];
-    for (let i = 0; i < inputVector; i += 1) {
+    for (let i = 0; i < inputVector; i++) {
       let sum = 0;
-      for (let j = 0; j < inputVector; j += 1) {
+      for (let j = 0; j < inputVector; j++) {
         sum += weights[i][j] * prevNetState[j];
       }
       currNetState[i] = sum >= 0 ? 1 : -1;
     }
-    if (counter === 999) {
-      console.log('Не могу вспомнить образ');
-      return;
-    }
   } while (!_.isEqual(currNetState, prevNetState));
 
-  error = currNetState.map((x, i) => x - oldImage[i]);
-  error = error.filter((x) => x == 0).length / error.length;
-
-  console.log(error);
+  result = currNetState.slice();
 
   drawImageFromArray(currNetState, netContext);
 };
 
+// Кнопки
 const resetButton = document.getElementById('resetButton');
 const memoryButton = document.getElementById('memoryButton');
 const recognizeButton = document.getElementById('recognizeButton');
+const retrainButton = document.getElementById('retrainButton');
 
 userCanvas.addEventListener('mousedown', (e) => handleMouseDown(e));
 userCanvas.addEventListener('mousemove', (e) => handleMouseMove(e));
@@ -159,7 +196,8 @@ userCanvas.addEventListener('mouseleave', () => stopDrawing());
 
 resetButton.addEventListener('click', () => clearCurrentImage());
 memoryButton.addEventListener('click', () => memorizeImage());
-recognizeButton.addEventListener('click', () => recognizeSignal());
+recognizeButton.addEventListener('click', () => recognizeImage());
+retrainButton.addEventListener('click', () => reTrain());
 
 drawGrid(userContext);
 drawGrid(netContext);
