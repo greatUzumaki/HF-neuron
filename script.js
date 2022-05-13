@@ -6,7 +6,7 @@ const weights = [];
 let userImageState = [];
 let all_Images = [];
 let result = [];
-const E = 0.08; // Коэф для переобучения;
+const E = 0.05; // Коэф для переобучения;
 
 for (let i = 0; i < inputVector; i++) {
   weights[i] = new Array(inputVector).fill(0);
@@ -62,11 +62,11 @@ const drawImageFromArray = (data, ctx) => {
     }
   }
 
+  // Просчёт ошибки
   let all_errors = [];
   let flatRecog = twoDimData.flat();
   for (let index = 0; index < all_Images.length; index++) {
     let currImage = all_Images[index];
-    console.log(currImage);
     let error = 0;
     for (let i = 0; i < flatRecog.length; i++) {
       if (flatRecog[i] !== currImage[i]) error++;
@@ -136,8 +136,8 @@ const clearCurrentImage = () => {
 
 // Запомнить образ
 const memorizeImage = () => {
-  for (let i = 0; i < inputVector; i += 1) {
-    for (let j = 0; j < inputVector; j += 1) {
+  for (let i = 0; i < inputVector; i++) {
+    for (let j = 0; j < inputVector; j++) {
       if (i === j) weights[i][j] = 0;
       else {
         weights[i][j] += userImageState[i] * userImageState[j];
@@ -150,9 +150,8 @@ const memorizeImage = () => {
 
 // Переобучить
 const reTrain = () => {
-  console.log(result);
-  for (let i = 0; i < inputVector; i += 1) {
-    for (let j = 0; j < inputVector; j += 1) {
+  for (let i = 0; i < inputVector; i++) {
+    for (let j = 0; j < inputVector; j++) {
       if (i === j) weights[i][j] = 0;
       else {
         weights[i][j] -= E * (result[i] * result[j]);
@@ -176,8 +175,13 @@ const recognizeImage = () => {
       }
       currNetState[i] = sum >= 0 ? 1 : -1;
     }
+    if (counter === 999) {
+      console.log('Не могу вспомнить');
+      return;
+    }
   } while (!_.isEqual(currNetState, prevNetState));
 
+  console.log(`Попыток распознать: ${counter}`);
   result = currNetState.slice();
 
   drawImageFromArray(currNetState, netContext);
@@ -199,5 +203,6 @@ memoryButton.addEventListener('click', () => memorizeImage());
 recognizeButton.addEventListener('click', () => recognizeImage());
 retrainButton.addEventListener('click', () => reTrain());
 
+// Инит сетки
 drawGrid(userContext);
 drawGrid(netContext);
